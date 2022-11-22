@@ -102,7 +102,7 @@ parser.add_argument('--adapt', action='store_true',
 parser.add_argument('--interact', action='store_true',
                     help='run a trained network interactively')
 
-#For getting embeddings
+# For getting embeddings
 parser.add_argument('--view_emb', action='store_true',
                     help='output the word embedding rather than the cell state')
 
@@ -160,7 +160,7 @@ if args.adapt:
 if args.view_layer != -1:
     # There shouldn't be a cheader if we're looking at model internals
     args.nocheader = True
-    
+
 # Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
 if torch.cuda.is_available():
@@ -199,6 +199,7 @@ def batchify(data, bsz):
     data = data.view(bsz, -1).t().contiguous()
     # Turning the data over to CUDA at this point may lead to more OOM errors
     return data.to(device)
+
 
 try:
     with open(args.vocab_file, 'r') as f:
@@ -265,6 +266,7 @@ criterion = nn.CrossEntropyLoss()
 # Complexity measures
 ###############################################################################
 
+
 def get_entropy(state):
     ''' Computes entropy of input vector '''
     # state should be a vector scoring possible classes
@@ -275,9 +277,11 @@ def get_entropy(state):
         # duplicate state but with all losing guesses set to 0
         beamk, beamix = torch.topk(state, args.complexn, 0)
         if args.softcliptopk:
-            beam = torch.FloatTensor(state.size()).to(device).fill_(0).scatter(0, beamix, beamk)
+            beam = torch.FloatTensor(state.size()).to(
+                device).fill_(0).scatter(0, beamix, beamk)
         else:
-            beam = torch.FloatTensor(state.size()).to(device).fill_(float("-inf")).scatter(0, beamix, beamk)
+            beam = torch.FloatTensor(state.size()).to(device).fill_(
+                float("-inf")).scatter(0, beamix, beamk)
 
     probs = nn.functional.softmax(beam, dim=0)
     # log_softmax is numerically more stable than two separate operations
@@ -285,6 +289,7 @@ def get_entropy(state):
     prod = probs.data * logprobs.data
     # sum but ignore nans
     return torch.Tensor([-1 * torch.sum(prod[prod == prod])]).to(device)
+
 
 def get_surps(state):
     ''' Computes surprisal for each element in given vector '''
@@ -296,12 +301,15 @@ def get_surps(state):
         # duplicate state but with all losing guesses set to 0
         beamk, beamix = torch.topk(state, args.complexn, 0)
         if args.softcliptopk:
-            beam = torch.FloatTensor(state.size()).to(device).fill_(0).scatter(0, beamix, beamk)
+            beam = torch.FloatTensor(state.size()).to(
+                device).fill_(0).scatter(0, beamix, beamk)
         else:
-            beam = torch.FloatTensor(state.size()).to(device).fill_(float("-inf")).scatter(0, beamix, beamk)
+            beam = torch.FloatTensor(state.size()).to(device).fill_(
+                float("-inf")).scatter(0, beamix, beamk)
 
     logprobs = nn.functional.log_softmax(beam, dim=0)
     return -1 * logprobs
+
 
 def get_guesses(state, scores=False):
     ''' Returns top-k guesses or guess indices of given vector '''
@@ -314,9 +322,11 @@ def get_guesses(state, scores=False):
     else:
         return guessixes
 
+
 def get_guessscores(state):
     ''' Wrapper that returns top-k guesses of given vector '''
     return get_guesses(state, True)
+
 
 def get_complexity(state, obs, sentid):
     ''' Generates complexity output for given state, observation, and sentid '''
@@ -336,10 +346,12 @@ def get_complexity(state, obs, sentid):
         if args.guess:
             outputguesses = []
             for guess_ix in range(args.guessn):
-                outputguesses.append(corpus.dictionary.idx2word[int(guesses[corpuspos][guess_ix])])
+                outputguesses.append(
+                    corpus.dictionary.idx2word[int(guesses[corpuspos][guess_ix])])
                 if args.guessscores:
                     # output raw scores
-                    outputguesses.append("{:.3f}".format(float(guessscores[corpuspos][guess_ix])))
+                    outputguesses.append("{:.3f}".format(
+                        float(guessscores[corpuspos][guess_ix])))
                 elif args.guessratios:
                     # output scores (ratio of score(x)/score(best guess)
                     outputguesses.append("{:.3f}".format(
@@ -353,12 +365,14 @@ def get_complexity(state, obs, sentid):
             outputguesses = args.csep.join(outputguesses)
             print(args.csep.join([str(word), str(sentid), str(corpuspos), str(len(word)),
                                   str(float(surp)), str(float(Hs[corpuspos])),
-                                  str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos]))),
+                                  str(max(
+                                      0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos]))),
                                   str(outputguesses)]))
         else:
             print(args.csep.join([str(word), str(sentid), str(corpuspos), str(len(word)),
                                   str(float(surp)), str(float(Hs[corpuspos])),
                                   str(max(0, float(Hs[max(corpuspos-1, 0)])-float(Hs[corpuspos])))]))
+
 
 def apply(func, apply_dimension):
     ''' Applies a function along a given dimension '''
@@ -369,12 +383,14 @@ def apply(func, apply_dimension):
 # Training code
 ###############################################################################
 
+
 def repackage_hidden(in_state):
     """ Wraps hidden states in new Tensors, to detach them from their history. """
     if isinstance(in_state, torch.Tensor):
         return in_state.detach()
     else:
         return tuple(repackage_hidden(value) for value in in_state)
+
 
 def get_batch(source, i):
     """ get_batch subdivides the source data into chunks of length args.bptt.
@@ -391,12 +407,14 @@ def get_batch(source, i):
     target = source[i+1:i+1+seq_len].view(-1)
     return data, target
 
+
 def test_get_batch(source):
     """ Creates an input/target pair for evaluation """
     seq_len = len(source) - 1
     data = source[:seq_len]
     target = source[1:1+seq_len].view(-1)
     return data, target
+
 
 def test_evaluate(test_sentences, data_source):
     """ Evaluate at test time (with adaptation, complexity output) """
@@ -419,9 +437,11 @@ def test_evaluate(test_sentences, data_source):
     if args.words:
         if not args.nocheader:
             if args.complexn == ntokens:
-                print('word{0}sentid{0}sentpos{0}wlen{0}surp{0}entropy{0}entred'.format(args.csep), end='')
+                print('word{0}sentid{0}sentpos{0}wlen{0}surp{0}entropy{0}entred'.format(
+                    args.csep), end='')
             else:
-                print('word{0}sentid{0}sentpos{0}wlen{0}surp{1}{0}entropy{1}{0}entred{1}'.format(args.csep, args.complexn), end='')
+                print('word{0}sentid{0}sentpos{0}wlen{0}surp{1}{0}entropy{1}{0}entred{1}'.format(
+                    args.csep, args.complexn), end='')
             if args.guess:
                 for i in range(args.guessn):
                     print('{0}guess'.format(args.csep)+str(i), end='')
@@ -439,7 +459,8 @@ def test_evaluate(test_sentences, data_source):
         # We predict all words but the first, so determine loss for those
         if test_sentences:
             sent = test_sentences[i]
-        hidden = model.init_hidden(1) # number of parallel sentences being processed
+        # number of parallel sentences being processed
+        hidden = model.init_hidden(1)
         data, targets = test_get_batch(sent_ids)
         if args.view_layer >= 0:
             for word_index in range(data.size(0)):
@@ -456,31 +477,36 @@ def test_evaluate(test_sentences, data_source):
                 input_word = corpus.dictionary.idx2word[int(word_input.data)]
                 targ_word = corpus.dictionary.idx2word[int(target.data)]
                 nwords += 1
-                if input_word != '<eos>': # not in (input_word,targ_word):
+                if input_word != '<eos>':  # not in (input_word,targ_word):
                     if args.verbose_view_layer:
-                        print(input_word,end=" ")
+                        print(input_word, end=" ")
                     # don't output <eos> markers to align with input
                     # output raw activations
                     if args.view_hidden:
                         # output hidden state
-                        print(*list(hidden[0][args.view_layer].view(1, -1).data.cpu().numpy().flatten()), sep=' ')
+                        print(
+                            *list(hidden[0][args.view_layer].view(1, -1).data.cpu().numpy().flatten()), sep=' ')
 
                     elif args.view_emb:
-                        #Get embedding for input word
+                        # Get embedding for input word
                         emb = model.encoder(word_input)
                         # output embedding
-                        print(*list(emb[0].view(1,-1).data.cpu().numpy().flatten()), sep=' ')
+                        print(
+                            *list(emb[0].view(1, -1).data.cpu().numpy().flatten()), sep=' ')
 
                     else:
                         # output cell state
-                        print(*list(hidden[1][args.view_layer].view(1, -1).data.cpu().numpy().flatten()), sep=' ')
+                        print(
+                            *list(hidden[1][args.view_layer].view(1, -1).data.cpu().numpy().flatten()), sep=' ')
         else:
-            data = data.unsqueeze(1) # only needed when a single sentence is being processed
+            # only needed when a single sentence is being processed
+            data = data.unsqueeze(1)
             output, hidden = model(data, hidden)
             try:
                 output_flat = output.view(-1, ntokens)
             except RuntimeError:
-                print("Vocabulary Error! Most likely there weren't unks in training and unks are now needed for testing")
+                print(
+                    "Vocabulary Error! Most likely there weren't unks in training and unks are now needed for testing")
                 raise
             loss = criterion(output_flat, targets.long())
             total_loss += loss.item()
@@ -501,7 +527,7 @@ def test_evaluate(test_sentences, data_source):
                 torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
                 for param in model.parameters():
                     if param.grad is not None:
-                    # only update trainable parameters
+                        # only update trainable parameters
                         param.data.add_(-lr, param.grad.data)
 
         hidden = repackage_hidden(hidden)
@@ -515,6 +541,7 @@ def test_evaluate(test_sentences, data_source):
     else:
         return total_loss / len(data_source)
 
+
 def evaluate(data_source):
     """ Evaluate for validation (no adaptation, no complexity output) """
     # Turn on evaluation mode which disables dropout.
@@ -527,9 +554,11 @@ def evaluate(data_source):
             data, targets = get_batch(data_source, i)
             output, hidden = model(data, hidden)
             output_flat = output.view(-1, ntokens)
-            total_loss += len(data) * criterion(output_flat, targets.long()).item()
+            total_loss += len(data) * criterion(output_flat,
+                                                targets.long()).item()
             hidden = repackage_hidden(hidden)
     return total_loss / len(data_source)
+
 
 def train():
     """ Train language model """
@@ -568,6 +597,7 @@ def train():
             total_loss = 0.
             start_time = time.time()
 
+
 # Loop over epochs.
 lr = args.lr
 best_val_loss = None
@@ -605,6 +635,7 @@ else:
     # Load the best saved model.
     with open(args.model_file, 'rb') as f:
         if args.cuda:
+            print(f)
             model = torch.load(f).to(device)
         else:
             model = torch.load(f, map_location='cpu')
@@ -638,7 +669,6 @@ else:
         print('#enc params = {}'.format(n_enc_param))
         print('#dec params = {}'.format(n_dec_param))
 
-
         # Then run interactively
         print('Running in interactive mode. Ctrl+c to exit')
         if '<unk>' not in corpus.dictionary.word2idx:
@@ -650,7 +680,8 @@ else:
                 try:
                     test_evaluate(test_sents, test_data)
                 except:
-                    print("RuntimeError: Most likely one of the input words was out-of-vocabulary.")
+                    print(
+                        "RuntimeError: Most likely one of the input words was out-of-vocabulary.")
                     print("    Retrain the model with\
                             A) explicit '<unk>'s in the training set\n    \
                             or B) words in validation that aren't present in training.")
