@@ -6,6 +6,7 @@ import torch
 
 from nltk import sent_tokenize
 
+
 def isfloat(instr):
     """ Reports whether a string is floatable """
     try:
@@ -14,8 +15,10 @@ def isfloat(instr):
     except:
         return(False)
 
+
 class Dictionary(object):
     """ Maps between observations and indices """
+
     def __init__(self):
         self.word2idx = {}
         self.idx2word = []
@@ -30,11 +33,13 @@ class Dictionary(object):
     def __len__(self):
         return len(self.idx2word)
 
+
 class SentenceCorpus(object):
     """ Loads train/dev/test corpora and dictionary """
+
     def __init__(self, path, vocab_file, test_flag=False, interact_flag=False,
                  checkpoint_flag=False, predefined_vocab_flag=False, lower_flag=False,
-                 collapse_nums_flag=False,multisentence_test_flag=False,generate_flag=False,
+                 collapse_nums_flag=False, multisentence_test_flag=False, generate_flag=False,
                  trainfname='train.txt',
                  validfname='valid.txt',
                  testfname='test.txt'):
@@ -44,11 +49,13 @@ class SentenceCorpus(object):
             # training mode
             self.dictionary = Dictionary()
             self.train = self.tokenize(os.path.join(path, trainfname))
-            self.valid = self.tokenize_with_unks(os.path.join(path, validfname))
+            self.valid = self.tokenize_with_unks(
+                os.path.join(path, validfname))
             try:
                 # don't require a test set at train time,
                 # but if there is one, get a sense of whether unks will be required
-                self.test = self.tokenize_with_unks(os.path.join(path, testfname))
+                self.test = self.tokenize_with_unks(
+                    os.path.join(path, testfname))
             except:
                 pass
             self.save_dict(vocab_file)
@@ -62,14 +69,17 @@ class SentenceCorpus(object):
             if test_flag:
                 # test mode
                 if multisentence_test_flag:
-                    self.test = self.tokenize_with_unks(os.path.join(path, testfname))
+                    self.test = self.tokenize_with_unks(
+                        os.path.join(path, testfname))
                 else:
-                    self.test = self.sent_tokenize_with_unks(os.path.join(path, testfname))
+                    self.test = self.sent_tokenize_with_unks(
+                        os.path.join(path, testfname))
             elif checkpoint_flag or predefined_vocab_flag:
                 # load from a checkpoint
-                self.train = self.tokenize_with_unks(os.path.join(path, trainfname))
-                self.valid = self.tokenize_with_unks(os.path.join(path, validfname))
-
+                self.train = self.tokenize_with_unks(
+                    os.path.join(path, trainfname))
+                self.valid = self.tokenize_with_unks(
+                    os.path.join(path, validfname))
 
     def save_dict(self, path):
         """ Saves dictionary to disk """
@@ -77,11 +87,11 @@ class SentenceCorpus(object):
             # This check actually seems to be faster than passing in a binary flag
             # Assume dict is binarized
             import dill
-            with open(path, 'wb') as file_handle:
+            with open(path, 'wb', encoding="UTF-8") as file_handle:
                 torch.save(self.dictionary, file_handle, pickle_module=dill)
         else:
             # Assume dict is plaintext
-            with open(path, 'w') as file_handle:
+            with open(path, 'w', encoding="UTF-8") as file_handle:
                 for word in self.dictionary.idx2word:
                     file_handle.write(word+'\n')
 
@@ -92,7 +102,7 @@ class SentenceCorpus(object):
             # This check actually seems to be faster than passing in a binary flag
             # Assume dict is binarized
             import dill
-            with open(path, 'rb') as file_handle:
+            with open(path, 'rb', encoding="UTF-8") as file_handle:
                 fdata = torch.load(file_handle, pickle_module=dill)
                 if isinstance(fdata, tuple):
                     # Compatibility with old pytorch LM saving
@@ -100,7 +110,7 @@ class SentenceCorpus(object):
                 self.dictionary = fdata
         else:
             # Assume dict is plaintext
-            with open(path, 'r') as file_handle:
+            with open(path, 'r', encoding="UTF-8") as file_handle:
                 for line in file_handle:
                     self.dictionary.add_word(line.strip())
 
@@ -109,7 +119,7 @@ class SentenceCorpus(object):
         assert os.path.exists(path), "Bad path: %s" % path
         # Add words to the dictionary
         if path[-2:] == 'gz':
-            with gzip.open(path, 'rb') as file_handle:
+            with gzip.open(path, 'rb', encoding="UTF-8") as file_handle:
                 tokens = 0
                 first_flag = True
                 for fchunk in file_handle.readlines():
@@ -137,7 +147,7 @@ class SentenceCorpus(object):
                                     self.dictionary.add_word(word)
 
             # Tokenize file content
-            with gzip.open(path, 'rb') as file_handle:
+            with gzip.open(path, 'rb', encoding="UTF-8") as file_handle:
                 ids = torch.LongTensor(tokens)
                 token = 0
                 first_flag = True
@@ -154,19 +164,22 @@ class SentenceCorpus(object):
                         if self.lower:
                             for word in words:
                                 if isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
-                                    ids[token] = self.dictionary.add_word(word.lower())
+                                    ids[token] = self.dictionary.add_word(
+                                        word.lower())
                                 token += 1
                         else:
                             for word in words:
                                 if isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
                                     ids[token] = self.dictionary.add_word(word)
                                 token += 1
         else:
-            with open(path, 'r') as file_handle:
+            with open(path, 'r', encoding="UTF-8") as file_handle:
                 tokens = 0
                 first_flag = True
                 for fchunk in file_handle:
@@ -194,7 +207,7 @@ class SentenceCorpus(object):
                                     self.dictionary.add_word(word)
 
             # Tokenize file content
-            with open(path, 'r') as file_handle:
+            with open(path, 'r', encoding="UTF-8") as file_handle:
                 ids = torch.LongTensor(tokens)
                 token = 0
                 first_flag = True
@@ -211,14 +224,17 @@ class SentenceCorpus(object):
                         if self.lower:
                             for word in words:
                                 if isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
-                                    ids[token] = self.dictionary.add_word(word.lower())
+                                    ids[token] = self.dictionary.add_word(
+                                        word.lower())
                                 token += 1
                         else:
                             for word in words:
                                 if isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
                                     ids[token] = self.dictionary.add_word(word)
                                 token += 1
@@ -229,7 +245,7 @@ class SentenceCorpus(object):
         assert os.path.exists(path), "Bad path: %s" % path
         if path[-2:] == 'gz':
             # Determine the length of the corpus
-            with gzip.open(path, 'rb') as file_handle:
+            with gzip.open(path, 'rb', encoding="UTF-8") as file_handle:
                 tokens = 0
                 first_flag = True
                 for fchunk in file_handle.readlines():
@@ -245,7 +261,7 @@ class SentenceCorpus(object):
                         tokens += len(words)
 
             # Tokenize file content
-            with gzip.open(path, 'rb') as file_handle:
+            with gzip.open(path, 'rb', encoding="UTF-8") as file_handle:
                 ids = torch.LongTensor(tokens)
                 token = 0
                 first_flag = True
@@ -263,9 +279,11 @@ class SentenceCorpus(object):
                             for word in words:
                                 # Convert OOV to <unk>
                                 if word.lower() not in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<unk>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<unk>")
                                 elif isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
                                     ids[token] = self.dictionary.word2idx[word.lower()]
                                 token += 1
@@ -273,15 +291,17 @@ class SentenceCorpus(object):
                             for word in words:
                                 # Convert OOV to <unk>
                                 if word not in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<unk>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<unk>")
                                 elif isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
                                     ids[token] = self.dictionary.word2idx[word]
                                 token += 1
         else:
             # Determine the length of the corpus
-            with open(path, 'r') as file_handle:
+            with open(path, 'r', encoding="UTF-8") as file_handle:
                 tokens = 0
                 first_flag = True
                 for fchunk in file_handle:
@@ -297,7 +317,7 @@ class SentenceCorpus(object):
                         tokens += len(words)
 
             # Tokenize file content
-            with open(path, 'r') as file_handle:
+            with open(path, 'r', encoding="UTF-8") as file_handle:
                 ids = torch.LongTensor(tokens)
                 token = 0
                 first_flag = True
@@ -315,9 +335,11 @@ class SentenceCorpus(object):
                             for word in words:
                                 # Convert OOV to <unk>
                                 if word.lower() not in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<unk>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<unk>")
                                 elif isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
                                     ids[token] = self.dictionary.word2idx[word.lower()]
                                 token += 1
@@ -325,9 +347,11 @@ class SentenceCorpus(object):
                             for word in words:
                                 # Convert OOV to <unk>
                                 if word not in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<unk>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<unk>")
                                 elif isfloat(word) and '<num>' in self.dictionary.word2idx:
-                                    ids[token] = self.dictionary.add_word("<num>")
+                                    ids[token] = self.dictionary.add_word(
+                                        "<num>")
                                 else:
                                     ids[token] = self.dictionary.word2idx[word]
                                 token += 1
@@ -339,7 +363,7 @@ class SentenceCorpus(object):
         all_ids = []
         sents = []
         if path[-2:] == 'gz':
-            with gzip.open(path, 'rb') as file_handle:
+            with gzip.open(path, 'rb', encoding="UTF-8") as file_handle:
                 for fchunk in file_handle.readlines():
                     for line in sent_tokenize(fchunk.decode("utf-8")):
                         if line.strip() == '':
@@ -350,7 +374,7 @@ class SentenceCorpus(object):
                         ids = self.convert_to_ids(words)
                         all_ids.append(ids)
         else:
-            with open(path, 'r') as file_handle:
+            with open(path, 'r', encoding="UTF-8") as file_handle:
                 for fchunk in file_handle:
                     for line in sent_tokenize(fchunk):
                         if line.strip() == '':
