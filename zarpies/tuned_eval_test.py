@@ -10,11 +10,17 @@ from transformers import (
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-model_path = os.path.join(dir_path, 'models', 'distilgpt2_adapted_ZT1')
+model_path = os.path.join(dir_path, 'models', 'bert_adapted_zarp')
 print(model_path)
 
-ilm_model = scorer.IncrementalLMScorer('distilgpt2', 'cpu')
-tuned_ilm_model = scorer.IncrementalLMScorer(
+# ilm_model = scorer.IncrementalLMScorer('distilgpt2', 'cpu')
+# tuned_ilm_model = scorer.IncrementalLMScorer(
+#     model_path, 'cpu')
+
+# This is using a masked, rather than incremental model, but I didnt feel like
+# chaning variable names.
+ilm_model = scorer.MaskedLMScorer('bert-base-uncased', 'cpu')
+tuned_ilm_model = scorer.MaskedLMScorer(
     model_path, 'cpu')
 
 
