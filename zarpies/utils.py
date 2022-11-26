@@ -76,7 +76,6 @@ def finetune(
         output_dir=fake_output_path, per_device_train_batch_size=batch_size
     )
 
-    print(tokenized_datasets)
     # Add in a labels feature to the dataset so that it will train
     tokenized_datasets["train"] = tokenized_datasets["train"].add_column(
         "labels", tokenized_datasets["train"]["input_ids"]
