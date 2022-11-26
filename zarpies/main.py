@@ -5,6 +5,8 @@ import os
 import switch_cache  # <----- Comment out
 from utils import finetune
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 # >>>>>>>>>>>>>>>>>> IMPORTANT <<<<<<<<<<<<<<<<<<
 # Set this variable to false after you run this code once, having it set to true
 # will redo all the finetune training

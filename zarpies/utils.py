@@ -45,7 +45,7 @@ def finetune(
     # If we are not using a previously finetuned model, we need to create/save a new tokenizer for it
     if use_original:
         tokenizer = AutoTokenizer.from_pretrained(lm_path_or_name)
-        # tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token = tokenizer.eos_token
         tokenizer.save_pretrained(output_path)
     else:
         tokenizer = AutoTokenizer.from_pretrained(lm_path_or_name)
