@@ -17,7 +17,7 @@ def finetune(
     lm_path_or_name,
     data_path,
     output_path,
-    batch_size=2,
+    batch_size=1,
     use_original=False,
     masked=False,
 ):
@@ -44,12 +44,17 @@ def finetune(
     tokenizer = None
     # If we are not using a previously finetuned model, we need to create/save a new tokenizer for it
     if use_original:
+        print(lm_path_or_name)
         tokenizer = AutoTokenizer.from_pretrained(lm_path_or_name)
-        tokenizer.pad_token = tokenizer.eos_token
+        print(tokenizer.pad_token)
+        print(tokenizer.eos_token)
+        if (tokenizer.eos_token == None):
+            tokenizer.eos_token = "<|endoftext|>"
+        if (tokenizer.pad_token == None):
+            tokenizer.pad_token = tokenizer.eos_token
         tokenizer.save_pretrained(output_path)
     else:
         tokenizer = AutoTokenizer.from_pretrained(lm_path_or_name)
-        tokenizer.pad_token = tokenizer.eos_token
 
     def tokenize_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True)
@@ -84,9 +89,64 @@ def finetune(
     trainer = Trainer(
         model=model, args=training_args, train_dataset=tokenized_datasets["train"]
     )
+    # print(lm_path_or_name)
+    # print(torch.cuda.memory_summary(device="cuda", abbreviated=False))
 
     trainer.train()
     model.save_pretrained(output_path)
+
+
+def get_model_names_and_data():
+    """
+    Returns tuple of (incremental model names, masked model names, finetune data files)
+    """
+    # incremental_models = ["openai-gpt", "gpt2",
+    #                       "gpt2-medium", "distilgpt2", "gpt2-large", "gpt2-xl"]
+    # masked_models = ["bert-base-uncased", "bert-large-uncased", "roberta-base", "roberta-large", "distilbert-base-uncased", "distilroberta-base", "albert-base-v1",
+    #                  "albert-large-v1", "albert-xlarge-v1", "albert-xxlarge-v1", "google/electra-small-generator", "google/electra-base-generator", "google/electra-large-generator"]
+    incremental_models = ["gpt2", "distilgpt2"]
+    masked_models = ["bert-base-uncased", "roberta-base",
+                     "albert-base-v1", "google/electra-base-generator"]
+
+    finetune_data = ["zarpiesT1.txt", "zarpiesT2.txt", "zarpiesT3.txt",
+                     "zarpiesT4.txt", "zarpiesOriginalGeneric.txt", "zarpiesOriginalSpecific.txt"]
+    return incremental_models, masked_models, finetune_data
+
+
+def get_model_paths_custom(incremental_names, masked_names, finetune_data):
+    """
+    Returns a list of model paths given the names of the models and the data
+    they were finetuned with. These path names are the same ones that are used 
+    in the main.py file when finetuning all models.
+    Returns a tuple: (array of incremental paths, array of masked paths)
+    """
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    inc_paths = []
+    masked_paths = []
+    for dp_ind, data_name in enumerate(finetune_data):
+        for inc_ind, model_name in enumerate(incremental_names):
+            torch.cuda.empty_cache()
+            model_name_clean = model_name.replace("/", "_")
+            data_name_clean = data_name.replace(".txt", "")
+            out_name = f"{model_name_clean}_adapted_{data_name_clean}"
+            out_path = os.path.join(
+                dir_path, 'models', 'incremental', out_name)
+            inc_paths.append(out_path)
+
+        for mas_ind, model_name in enumerate(masked_names):
+            torch.cuda.empty_cache()
+            model_name_clean = model_name.replace("/", "_")
+            data_name_clean = data_name.replace(".txt", "")
+            out_name = f"{model_name_clean}_adapted_{data_name_clean}"
+            out_path = os.path.join(dir_path, 'models', 'masked', out_name)
+            masked_paths.append(out_path)
+    return inc_paths, masked_paths
+
+
+def get_model_paths():
+    """Returns a tuple: (array of incremental paths, array of masked paths)"""
+    nad = get_model_names_and_data()
+    return get_model_paths_custom(nad[0], nad[1], nad[2])
 
 
 def create_scorer(lm_path_or_name, masked):
